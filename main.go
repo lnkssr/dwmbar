@@ -30,7 +30,7 @@ func main() {
 	f(c.Provide(util.NewErrorChecker))
 
 	// Inject theme singleton(you can use another theme, see themes namespace)
-	f(c.Provide(themes.CreateThemeTomorrowNight))
+	f(c.Provide(themes.CreateThemeDracula))
 
 	// Inject snapshot(used for store metrics) singleton
 	f(c.Provide(snapshot.NewDwmBarStatsSnapshot))
