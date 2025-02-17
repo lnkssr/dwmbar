@@ -2,6 +2,9 @@ package cpu_temp
 
 import (
 	"errors"
+	"fmt"
+	"regexp"
+
 	"github.com/ssimunic/gosensors"
 )
 
@@ -12,16 +15,23 @@ type Stats struct {
 func Get() (*Stats, error) {
 	sensors, err := gosensors.NewFromSystem()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting sensors data: %v", err)
 	}
 
-	for chip := range sensors.Chips {
-		for key, value := range sensors.Chips[chip] {
-			if key == "CPU" {
-				return &Stats{Temperature: value}, nil
+	tempRegex := regexp.MustCompile(`([+-]?\d+(\.\d+)?)°C`)
+
+	for chip, values := range sensors.Chips {
+		if chip == "coretemp-isa-0000" {
+			for key, value := range values {
+				if key == "Core 0" || key == "Package id 0" {
+					matches := tempRegex.FindStringSubmatch(value)
+					if len(matches) > 0 {
+						return &Stats{Temperature: matches[0]}, nil
+					}
+				}
 			}
 		}
 	}
 
-	return nil, errors.New("not found chip")
+	return nil, errors.New("not found chip or temperature data")
 }

@@ -1,8 +1,6 @@
 package metrics_collector
 
 import (
-	"github.com/mackerelio/go-osstat/memory"
-	"go.uber.org/zap"
 	"main/snapshot"
 	"main/state_providers/battery_state"
 	"main/state_providers/brightness_state"
@@ -16,6 +14,9 @@ import (
 	"main/util"
 	"sync"
 	"time"
+
+	"github.com/mackerelio/go-osstat/memory"
+	"go.uber.org/zap"
 )
 
 type DwmBarMetricsCollector struct {
@@ -54,16 +55,14 @@ func (c *DwmBarMetricsCollector) collectAllMetrics() {
 
 func (c *DwmBarMetricsCollector) callMethods(methods []func()) {
 	var wg sync.WaitGroup
-	for i := range methods {
-		method := methods[i]
-
+	for _, method := range methods {
+		method := method // Захватываем текущую итерацию
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			method()
 		}()
 	}
-	wg.Wait()
 }
 
 func (c *DwmBarMetricsCollector) collectEverySecondsMetrics() {

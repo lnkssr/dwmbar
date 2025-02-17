@@ -3,7 +3,6 @@ package drawer
 import (
 	"errors"
 	"fmt"
-	"github.com/inhies/go-bytesize"
 	"log"
 	"main/drawer_templates"
 	"main/drawer_theme"
@@ -18,6 +17,8 @@ import (
 	"main/state_providers/volume_state"
 	"main/util"
 	"time"
+
+	"github.com/inhies/go-bytesize"
 )
 
 type Drawer struct {
@@ -234,46 +235,37 @@ func (d *Drawer) drawPowerState(s battery_state.Stats) {
 		return
 	}
 
-	var status string
+	// Карта для отображения состояния аккумулятора
+	statusMap := map[string]string{
+		"Full":         drawer_templates.BatPartFull,
+		"Discharging":  drawer_templates.BatPartDischarging,
+		"Charging":     drawer_templates.BatPartCharging,
+		"Not charging": drawer_templates.BatPartNotCharging,
+		"Unknown":      drawer_templates.BatPartUnknown,
+		"Empty":        "Empty",
+		"Idle":         "Idle",
+	}
 
-	// see github.com/distatus/battery@v0.11.0/battery.go:64 (states variable)
-	switch s.State {
-	case "Full":
-		status = drawer_templates.BatPartFull
-	case "Discharging":
-		status = drawer_templates.BatPartDischarging
-	case "Charging":
-		status = drawer_templates.BatPartCharging
-	case "Not charging":
-		status = drawer_templates.BatPartNotCharging
-	case "Unknown":
-		status = drawer_templates.BatPartUnknown
-	case "Empty":
-		status = "Empty"
-	case "Idle":
-		status = "Idle"
-	default:
+	// Устанавливаем статус на основе состояния аккумулятора или используем BatPartUndefined по умолчанию
+	status, exists := statusMap[s.State]
+	if !exists {
 		status = drawer_templates.BatPartUndefined
 	}
 
+	// Показатель предупреждения при низком уровне заряда
 	warn := ""
 	if s.Percent <= 25 {
 		warn = drawer_templates.BatPartWarningSymbol
 	}
 
-	value := fmt.Sprintf(
-		drawer_templates.Bat,
-		fmt.Sprintf(
-			drawer_templates.BatPartStatus,
-			d.t.Orange,
-			d.t.Black,
-			d.t.Orange,
-			status,
-		),
-		fmt.Sprintf(drawer_templates.BatPartWarning, d.t.Black, d.t.Orange, warn),
-		s.Percent,
-	)
+	// Формируем строку с данными батареи с использованием шаблонов
+	statusTemplate := fmt.Sprintf(drawer_templates.BatPartStatus, d.t.Orange, d.t.Black, d.t.Orange, status)
+	warningTemplate := fmt.Sprintf(drawer_templates.BatPartWarning, d.t.Black, d.t.Orange, warn)
 
+	// Формируем итоговую строку для вывода
+	value := fmt.Sprintf(drawer_templates.Bat, statusTemplate, warningTemplate, s.Percent)
+
+	// Добавляем в вывод
 	d.add(value)
 }
 
@@ -307,13 +299,16 @@ func (d *Drawer) drawClock(clockTime time.Time) {
 		clockMonth = drawer_templates.GetClockMonthEn(clockTime.Month())
 		clockWeekDay = drawer_templates.GetClockWeekDayEn(clockTime.Weekday())
 	default:
+		// Лучше использовать логирование или сообщение об ошибке
 		str := "Invalid language(use default 'ru'): " + d.c.Lang
 		d.checker.ErrorFound(errors.New(str))
 
+		// Используем значения по умолчанию
 		clockMonth = drawer_templates.GetClockMonthRu(clockTime.Month())
 		clockWeekDay = drawer_templates.GetClockWeekDayRu(clockTime.Weekday())
 	}
 
+	// Формируем строку с временем
 	date := fmt.Sprintf(
 		drawer_templates.Clock,
 		d.t.Blue,
@@ -332,7 +327,8 @@ func (d *Drawer) drawClock(clockTime time.Time) {
 }
 
 func (d *Drawer) blinkOneSecond() int64 {
-	return time.Now().Unix() % 2 // 0 or 1
+	// Простая альтернатива для мигания
+	return time.Now().UnixNano() / int64(time.Second) % 2 // 0 or 1
 }
 
 func (d *Drawer) drawNotificationsDisabled(state notifications_state.Stats) {
@@ -343,12 +339,14 @@ func (d *Drawer) drawNotificationsDisabled(state notifications_state.Stats) {
 	if state.IsDisabled {
 		var color string
 
+		// Используем blinkOneSecond для мигания
 		if d.c.EnableNotificationsStateBgBlinking && 0 == d.blinkOneSecond() {
 			color = d.t.Orange
 		} else {
 			color = d.t.Cyan
 		}
 
+		// Формируем строку уведомления с использованием шаблонов
 		date := fmt.Sprintf(
 			drawer_templates.NotificationsDisabled,
 			color,
@@ -360,7 +358,8 @@ func (d *Drawer) drawNotificationsDisabled(state notifications_state.Stats) {
 }
 
 func (d *Drawer) print() {
-	_, err := util.ExecCmd("xsetroot -name", d._v)
+	// Собираем итоговое значение и передаем в xsetroot
+	_, err := util.ExecCmd("xsetroot", "-name", d._v)
 	if err != nil {
 		log.Println(
 			fmt.Sprintf(

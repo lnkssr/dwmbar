@@ -7,10 +7,10 @@ import (
 	"io"
 	"main/util"
 	"os"
+	"os/exec"
 	"strings"
 )
 
-// Get network_connection statistics
 func Get() (*Stats, error) {
 	path := "/sys/class/net/"
 	dirEntries, err := os.ReadDir(path)
@@ -31,7 +31,6 @@ func Get() (*Stats, error) {
 			path,
 		)
 
-		// Force stop
 		if err2 != nil {
 			return nil, err2
 		}
@@ -56,11 +55,9 @@ func Get() (*Stats, error) {
 			if isUp {
 				wirelessConnected = true
 				wirelessInterfaceName = name
-				wirelessConnectionNamee, err44 := getWirelessConnectionName(
-					wirelessInterfaceName,
-				)
-				if err44 == nil {
-					wirelessConnectionName = wirelessConnectionNamee
+				nameStr, errConn := getWirelessConnectionName(wirelessInterfaceName)
+				if errConn == nil {
+					wirelessConnectionName = nameStr
 				}
 			}
 			continue
@@ -78,28 +75,72 @@ func Get() (*Stats, error) {
 }
 
 func getWirelessConnectionName(iface string) (string, error) {
-	output, err := util.ExecCmd("iwctl station", iface, "show")
+	if commandExists("iwctl") {
+		return getWirelessConnectionNameFromIwctl(iface)
+	} else if commandExists("wpa_cli") {
+		return getWirelessConnectionNameFromWPACli(iface)
+	} else if commandExists("nmcli") {
+		return getWirelessConnectionNameFromNmcli(iface)
+	}
+	return "", errors.New("нет поддерживаемого софта для получения информации о беспроводном соединении")
+}
+
+func commandExists(name string) bool {
+	_, err := exec.LookPath(name)
+	return err == nil
+}
+
+func getWirelessConnectionNameFromIwctl(iface string) (string, error) {
+	output, err := util.ExecCmd("iwctl", "station", iface, "show")
 	if err != nil {
 		return "", err
 	}
 
 	lines := strings.Split(output, "\n")
-
 	for _, line := range lines {
-		connectionString, found := strings.CutPrefix(
-			strings.TrimSpace(line),
-			"Connected network",
-		)
-		if found {
-			connectionString = strings.TrimSpace(connectionString)
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "Connected network") {
+			connectionString := strings.TrimSpace(strings.TrimPrefix(trimmed, "Connected network"))
 			return connectionString, nil
 		}
 	}
 
-	return "", errors.New("iwctl wrong result")
+	return "", errors.New("iwctl: не удалось определить имя сети")
 }
 
-// Stats represents network_connection info
+func getWirelessConnectionNameFromWPACli(iface string) (string, error) {
+	output, err := util.ExecCmd("wpa_cli", "-i", iface, "status")
+	if err != nil {
+		return "", err
+	}
+
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "ssid=") {
+			return strings.TrimSpace(strings.TrimPrefix(line, "ssid=")), nil
+		}
+	}
+
+	return "", errors.New("wpa_cli: не удалось определить имя сети")
+}
+
+func getWirelessConnectionNameFromNmcli(iface string) (string, error) {
+	output, err := util.ExecCmd("nmcli", "-t", "-f", "active,ssid", "dev", "wifi")
+	if err != nil {
+		return "", err
+	}
+
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) == 2 && parts[0] == "yes" {
+			return parts[1], nil
+		}
+	}
+
+	return "", errors.New("nmcli: не удалось определить активное соединение")
+}
+
 type Stats struct {
 	WiredConnected         bool
 	WirelessConnected      bool
@@ -126,7 +167,7 @@ func (s *Stats) GetActiveInterfaceName() (string, error) {
 		return s.WirelessInterfaceName, nil
 	}
 
-	return "", errors.New("all network is off")
+	return "", errors.New("все сетевые интерфейсы отключены")
 }
 
 type OperstateError struct {
@@ -172,11 +213,11 @@ func getOperstateStatus(out io.Reader) (bool, error) {
 			return false, nil
 		default:
 			err := &OperstateError{
-				message: "Wrong Operstate file text",
+				message: "Неверное содержимое файла operstate",
 			}
 
 			return false, err
 		}
 	}
-	return false, &OperstateError{message: "Scanner problem"}
+	return false, &OperstateError{message: "Проблема со сканером"}
 }

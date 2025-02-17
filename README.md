@@ -67,7 +67,7 @@ Here described all library, commands and platform choices of this tool
 ## Platform specific
 
 * `linux`, `x11`, `dwm` - just for formal list
-* `iwd` - wireless network daemon
+* `iwd`, `networkmanager`, `wpa_supplicant` - wireless network daemon
 * `dunst` - notifications daemon
 * `media-fonts/nerd-fonts-symbols` on gentoo
 * `dwm-status2d` patch
