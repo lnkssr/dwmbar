@@ -7,9 +7,14 @@
 * required dwm-status2d patch
 * nerd fonts package(media-fonts/nerd-fonts-symbols on gentoo)
 
+**or**
+> sudo make install 
+**or**
+> make local_install for install in `~/.dwm/bin/dwmbar`
+
 ## How to run on dwm start
 
-Add `~/.dwm/bin/dwmbar` to x init file
+Add `~/.dwm/bin/dwmbar` to x init file or `dwmbar` if you use `sudo make install`
 
 ## Run example
 
