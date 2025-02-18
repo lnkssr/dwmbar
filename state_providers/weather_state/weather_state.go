@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sync"
+	"time"
 )
 
 // Stats содержит температуру
@@ -14,7 +16,35 @@ type Stats struct {
 	Temperature string
 }
 
+var (
+	cache      *Stats
+	cacheMutex sync.Mutex
+	lastUpdate time.Time
+)
+
+// Get возвращает данные о погоде, обновляя их раз в 10 минут
 func Get() (*Stats, error) {
+	cacheMutex.Lock()
+	defer cacheMutex.Unlock()
+
+	// Если прошло менее 10 минут, вернуть кешированные данные
+	if time.Since(lastUpdate) < 10*time.Minute && cache != nil {
+		return cache, nil
+	}
+
+	// Обновляем данные о погоде
+	weather, err := fetchWeather()
+	if err != nil {
+		return nil, err
+	}
+
+	cache = weather
+	lastUpdate = time.Now()
+	return cache, nil
+}
+
+// fetchWeather выполняет запрос к API и обновляет погоду
+func fetchWeather() (*Stats, error) {
 	ip, err := getPublicIP()
 	if err != nil {
 		log.Println("Ошибка при получении IP:", err)
@@ -49,12 +79,12 @@ type Location struct {
 func getPublicIP() (string, error) {
 	resp, err := http.Get("https://ifconfig.me")
 	if err != nil {
-		return "", fmt.Errorf("ошибка при получении публичного IP через ifconfig.me: %v", err)
+		return "", fmt.Errorf("ошибка при получении публичного IP: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("не удалось получить публичный IP. Статус код: %d", resp.StatusCode)
+		return "", fmt.Errorf("не удалось получить публичный IP. Код: %d", resp.StatusCode)
 	}
 
 	ip, err := ioutil.ReadAll(resp.Body)
@@ -70,12 +100,12 @@ func getLocationByIP(ip string) (*Location, error) {
 	url := fmt.Sprintf("http://ip-api.com/json/%s?fields=city,lat,lon", ip)
 	resp, err := http.Get(url)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка при получении данных о местоположении по IP: %v", err)
+		return nil, fmt.Errorf("ошибка при получении местоположения по IP: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("не удалось получить данные о местоположении. Статус код: %d", resp.StatusCode)
+		return nil, fmt.Errorf("не удалось получить данные о местоположении. Код: %d", resp.StatusCode)
 	}
 
 	var result struct {
@@ -89,7 +119,7 @@ func getLocationByIP(ip string) (*Location, error) {
 	}
 
 	if result.City == "" || result.Lat == 0 || result.Lon == 0 {
-		return nil, errors.New("не удалось получить корректные данные о городе и координатах")
+		return nil, errors.New("некорректные данные о городе и координатах")
 	}
 
 	return &Location{
@@ -109,7 +139,7 @@ func getTemperature(lat, lon float64) (float64, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("не удалось получить данные о погоде. Статус код: %d", resp.StatusCode)
+		return 0, fmt.Errorf("не удалось получить данные о погоде. Код: %d", resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
