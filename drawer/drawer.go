@@ -86,9 +86,9 @@ func (d *Drawer) drawWeather(stats weather_state.Stats) {
 
 	result := fmt.Sprintf(
 		drawer_templates.Weather,
-		d.t.Cyan,
 		d.t.Black,
-		d.t.Cyan,
+		d.t.Black,
+		d.t.Green,
 		stats.Temperature,
 	)
 

@@ -1,7 +1,7 @@
 package drawer_templates
 
 const (
-	LeftSep = ""
+	LeftSep = ""
 )
 
 const (
