@@ -1,78 +1,115 @@
-# DWMBAR
+# DWMBAR - Status Bar for DWM
 
-## How to build?
+DWMBAR is a convenient utility for displaying information in the status bar of the **DWM** window manager.
 
-> make build
+---
 
-* required dwm-status2d patch
-* nerd fonts package(media-fonts/nerd-fonts-symbols on gentoo)
+## Installation
 
-**or**
-> sudo make install 
-**or**
-> make local_install for install in `~/.dwm/bin/dwmbar`
+### Build
 
-## How to run on dwm start
+To build, use the command:
+```sh
+make build
+```
+**Requirements:**
+- **dwm-status2d** patch
+- **Nerd Fonts** package (`media-fonts/nerd-fonts-symbols` on Gentoo, `nerd-fonts-git` on arch)
 
-Add `~/.dwm/bin/dwmbar` to x init file or `dwmbar` if you use `sudo make install`
+**Or install:**
+```sh
+sudo make install
+```
+**Or for local installation:**
+```sh
+make local_install
+```
+(The file will be installed in `~/.dwm/bin/dwmbar`)
 
-## Run example
+---
 
-Show only time:
-```shell
-# Russian
-dwmbar --noBrightness -noCpu -noLang -noMemory -noNetworkStats -noNetworkState -noPowerState -noTemp -noVolume -noNotificationsState -enableNotificationsStateBgBlinking --lang=ru
-
-# English
-dwmbar --noBrightness -noCpu -noLang -noMemory -noNetworkStats -noNetworkState -noPowerState -noTemp -noVolume -noNotificationsState -enableNotificationsStateBgBlinking --lang=en
+## Autostart on DWM launch
+Add to your **xinitrc**:
+```sh
+~/.dwm/bin/dwmbar
+```
+If `sudo make install` was used, simply add:
+```sh
+dwmbar
 ```
 
-## Screenshot:
+---
 
-![Demo](screenshots/demo.png)
+## Run Examples
 
-## Structure:
+### Displaying only time
 
-- [drawer](drawer) - draw final bar
-- [drawer_templates](drawer_templates) - templates for drawer use `fmt.Sprintf`
-- [drawer_theme](drawer_theme) - utility function for create new drawer theme
-- [metrics_collector](metrics_collector) - here we collect whole information using [state_providers](state_providers)
-- [snapshot](snapshot) - just for "current" collected infos(collects new data every time)
-- [state_providers](state_providers) - here infrastructure level getters, use specific commands or libraries
-- [themes](themes) - predefined, created by me themes
-- [util](util) - utility functions, like shared layer
+#### Russian Language
+```sh
+dwmbar --noBrightness -noCpu -noLang -noMemory -noNetworkStats -noWeather -noNetworkState -noPowerState -noTemp -noVolume -noNotificationsState -enableNotificationsStateBgBlinking --lang=ru
+```
 
-## Flow
+#### English Language
+```sh
+dwmbar --noBrightness -noCpu -noLang -noMemory -noNetworkStats -noWeather -noNetworkState -noPowerState -noTemp -noVolume -noNotificationsState -enableNotificationsStateBgBlinking --lang=en
+```
 
-We have 2 separate modules: [metrics_collector](metrics_collector) and [drawer](drawer)
+---
 
-* [metrics_collector](metrics_collector) -> [state_providers](state_providers) -> OS(Getting information)
-* [drawer](drawer) -> [drawer_templates](drawer_templates) + [drawer_theme](drawer_theme) -> OS(Write bar)
+## Screenshot
+![Demo](screenshots/image.png)
 
-## Specific
+---
 
-Here described all library, commands and platform choices of this tool
+## Project Structure
 
-### State providers
+- **[drawer](drawer)** — renders the final bar
+- **[drawer_templates](drawer_templates)** — templates for `fmt.Sprintf`
+- **[drawer_theme](drawer_theme)** — utilities for creating themes
+- **[metrics_collector](metrics_collector)** — collects data using `state_providers`
+- **[snapshot](snapshot)** — stores current state
+- **[state_providers](state_providers)** — low-level handlers (commands, libraries)
+- **[themes](themes)** — predefined themes
+- **[util](util)** — utility functions
 
-* [battery_state](state_providers/battery_state) - use library `github.com/distatus/battery`
-* [brightness_state](state_providers/brightness_state) - use command `brightnessctl`
-* [cpu_stat](state_providers/cpu_stat) - use library `github.com/mackerelio/go-osstat/cpu`
-* [cpu_temp](state_providers/cpu_temp) - use library `github.com/ssimunic/gosensors`
-* [keyboard_layout](state_providers/keyboard_layout) - use command `xkblayout-state`
-* [network_connection_state](state_providers/network_connection_state) - use directory `/sys/class/net/` lookup and parsing for wired connections and `iwctl` for wireless connections
-* [network_stat](state_providers/network_stat) use library `github.com/mackerelio/go-osstat/network`
-* [notifications_state](state_providers/notifications_state) - use command `dunstctl`
-* [volume_state](state_providers/volume_state) - use library `github.com/itchyny/volume-go`
+---
 
-### Drawer
+## Workflow
 
-* `xsetroot` - for write result string in dwm bar section
+The utility consists of two main modules:
+1. **Data Collection:**
+   - `metrics_collector` → `state_providers` → OS (data request)
+2. **Rendering the Status Bar:**
+   - `drawer` → `drawer_templates` + `drawer_theme` → OS (output to status bar)
 
-## Platform specific
+---
 
-* `linux`, `x11`, `dwm` - just for formal list
-* `iwd`, `networkmanager`, `wpa_supplicant` - wireless network daemon
-* `dunst` - notifications daemon
-* `media-fonts/nerd-fonts-symbols` on gentoo
-* `dwm-status2d` patch
+## Components
+
+### State Providers
+
+- **Battery:** `github.com/distatus/battery`
+- **Screen Brightness:** `brightnessctl`
+- **CPU Load:** `github.com/mackerelio/go-osstat/cpu`
+- **CPU Temperature:** `github.com/ssimunic/gosensors`
+- **Keyboard Layout:** `xkblayout-state`
+- **Network State:** `/sys/class/net/`, `iwctl`
+- **Network Statistics:** `github.com/mackerelio/go-osstat/network`
+- **Notifications:** `dunstctl`
+- **Volume Control:** `github.com/itchyny/volume-go`
+- **Weather temperacure** `ifconfig.me`, `openmetio`, `openstreetmap`  
+
+### Status Bar Rendering
+
+- The `xsetroot` command is used to output the string to the DWM status bar
+
+---
+
+## Supported Platforms
+
+- **OS:** Linux, X11, DWM
+- **Network Daemons:** iwd, NetworkManager, wpa_supplicant
+- **Notifications:** dunst
+- **Fonts:** `media-fonts/nerd-fonts-symbols` (Gentoo), `nerd-fonts-git` (aur)
+- **Patches:** `dwm-status2d`
+
