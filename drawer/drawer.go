@@ -15,6 +15,7 @@ import (
 	"main/state_providers/network_stat"
 	"main/state_providers/notifications_state"
 	"main/state_providers/volume_state"
+	"main/state_providers/weather_state" // Импортируем weather_state
 	"main/util"
 	"time"
 
@@ -52,6 +53,7 @@ func (d *Drawer) redraw() {
 	d.drawPowerState(d.s.BatteryState)
 	d.drawKeyboardLayout(d.s.KeyboardLayout)
 	d.drawNotificationsDisabled(d.s.NotificationsState)
+	d.drawWeather(d.s.WeatherState)
 	d.drawClock(d.s.NowDateTime)
 	d.print()
 }
@@ -68,6 +70,29 @@ func NewDwmBarDrawer(
 func (d *Drawer) add(string string) *Drawer {
 	d._v = d._v + string
 	return d
+}
+
+func (d *Drawer) drawWeather(stats weather_state.Stats) {
+	if d.c.NoWeatherState {
+		return
+	}
+
+	weatherData, err := weather_state.Get()
+	if err != nil {
+		return
+	}
+
+	log.Printf("Отладка: Получены данные о погоде: %+v\n", weatherData)
+
+	result := fmt.Sprintf(
+		drawer_templates.Weather,
+		d.t.Cyan,
+		d.t.Black,
+		d.t.Cyan,
+		stats.Temperature,
+	)
+
+	d.add(result)
 }
 
 func (d *Drawer) drawNetworkStat(stats network_stat.Stats) {
