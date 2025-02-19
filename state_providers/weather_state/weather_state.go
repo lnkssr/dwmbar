@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-// Stats содержит температуру
 type Stats struct {
 	Temperature string
 }
@@ -22,17 +21,14 @@ var (
 	lastUpdate time.Time
 )
 
-// Get возвращает данные о погоде, обновляя их раз в 10 минут
 func Get() (*Stats, error) {
 	cacheMutex.Lock()
 	defer cacheMutex.Unlock()
 
-	// Если прошло менее 10 минут, вернуть кешированные данные
 	if time.Since(lastUpdate) < 10*time.Minute && cache != nil {
 		return cache, nil
 	}
 
-	// Обновляем данные о погоде
 	weather, err := fetchWeather()
 	if err != nil {
 		return nil, err
@@ -43,23 +39,22 @@ func Get() (*Stats, error) {
 	return cache, nil
 }
 
-// fetchWeather выполняет запрос к API и обновляет погоду
 func fetchWeather() (*Stats, error) {
 	ip, err := getPublicIP()
 	if err != nil {
-		log.Println("Ошибка при получении IP:", err)
+		log.Println("Error getting IP:", err)
 		return nil, err
 	}
 
 	loc, err := getLocationByIP(ip)
 	if err != nil {
-		log.Println("Ошибка при определении местоположения:", err)
+		log.Println("Error determining location:", err)
 		return nil, err
 	}
 
 	temp, err := getTemperature(loc.Latitude, loc.Longitude)
 	if err != nil {
-		log.Println("Ошибка при получении температуры:", err)
+		log.Println("Error getting temperature:", err)
 		return nil, err
 	}
 
@@ -68,44 +63,41 @@ func fetchWeather() (*Stats, error) {
 	}, nil
 }
 
-// Location содержит информацию о городе и координатах
 type Location struct {
 	City      string
 	Latitude  float64
 	Longitude float64
 }
 
-// getPublicIP получает публичный IP-адрес через ifconfig.me
 func getPublicIP() (string, error) {
 	resp, err := http.Get("https://ifconfig.me")
 	if err != nil {
-		return "", fmt.Errorf("ошибка при получении публичного IP: %v", err)
+		return "", fmt.Errorf("error getting public IP: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("не удалось получить публичный IP. Код: %d", resp.StatusCode)
+		return "", fmt.Errorf("failed to get public IP. Code: %d", resp.StatusCode)
 	}
 
 	ip, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("ошибка при чтении ответа от ifconfig.me: %v", err)
+		return "", fmt.Errorf("error reading response from ifconfig.me: %v", err)
 	}
 
 	return string(ip), nil
 }
 
-// getLocationByIP получает город и координаты по IP-адресу
 func getLocationByIP(ip string) (*Location, error) {
 	url := fmt.Sprintf("http://ip-api.com/json/%s?fields=city,lat,lon", ip)
 	resp, err := http.Get(url)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка при получении местоположения по IP: %v", err)
+		return nil, fmt.Errorf("error getting location by IP: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("не удалось получить данные о местоположении. Код: %d", resp.StatusCode)
+		return nil, fmt.Errorf("failed to get location data. Code: %d", resp.StatusCode)
 	}
 
 	var result struct {
@@ -115,11 +107,11 @@ func getLocationByIP(ip string) (*Location, error) {
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("ошибка при декодировании данных о местоположении: %v", err)
+		return nil, fmt.Errorf("error decoding location data: %v", err)
 	}
 
 	if result.City == "" || result.Lat == 0 || result.Lon == 0 {
-		return nil, errors.New("некорректные данные о городе и координатах")
+		return nil, errors.New("invalid city and coordinates data")
 	}
 
 	return &Location{
@@ -129,22 +121,21 @@ func getLocationByIP(ip string) (*Location, error) {
 	}, nil
 }
 
-// getTemperature получает текущую температуру через API Open-Meteo по координатам
 func getTemperature(lat, lon float64) (float64, error) {
 	weatherURL := fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f&current_weather=true", lat, lon)
 	resp, err := http.Get(weatherURL)
 	if err != nil {
-		return 0, fmt.Errorf("ошибка при получении данных о погоде: %v", err)
+		return 0, fmt.Errorf("error getting weather data: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("не удалось получить данные о погоде. Код: %d", resp.StatusCode)
+		return 0, fmt.Errorf("failed to get weather data. Code: %d", resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return 0, fmt.Errorf("ошибка при чтении ответа от Open-Meteo: %v", err)
+		return 0, fmt.Errorf("error reading response from Open-Meteo: %v", err)
 	}
 
 	var data struct {
@@ -154,7 +145,7 @@ func getTemperature(lat, lon float64) (float64, error) {
 	}
 
 	if err := json.Unmarshal(body, &data); err != nil {
-		return 0, fmt.Errorf("ошибка при декодировании данных о погоде: %v", err)
+		return 0, fmt.Errorf("error decoding weather data: %v", err)
 	}
 
 	return data.CurrentWeather.Temperature, nil

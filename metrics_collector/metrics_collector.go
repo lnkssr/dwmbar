@@ -58,7 +58,7 @@ func (c *DwmBarMetricsCollector) collectAllMetrics() {
 func (c *DwmBarMetricsCollector) callMethods(methods []func()) {
 	var wg sync.WaitGroup
 	for _, method := range methods {
-		method := method // Захватываем текущую итерацию
+		method := method
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -109,7 +109,6 @@ func (c *DwmBarMetricsCollector) Run() {
 	}
 }
 
-// FirstCollect Proxy method for extra case
 func (c *DwmBarMetricsCollector) FirstCollect() {
 	c.collectAllMetrics()
 }

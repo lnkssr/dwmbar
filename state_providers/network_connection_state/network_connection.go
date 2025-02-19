@@ -3,7 +3,6 @@ package network_connection_state
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"io"
 	"main/util"
 	"os"
@@ -82,7 +81,7 @@ func getWirelessConnectionName(iface string) (string, error) {
 	} else if commandExists("nmcli") {
 		return getWirelessConnectionNameFromNmcli(iface)
 	}
-	return "", errors.New("нет поддерживаемого софта для получения информации о беспроводном соединении")
+	return "", errors.New("no supported software found to retrieve wireless connection information")
 }
 
 func commandExists(name string) bool {
@@ -105,7 +104,7 @@ func getWirelessConnectionNameFromIwctl(iface string) (string, error) {
 		}
 	}
 
-	return "", errors.New("iwctl: не удалось определить имя сети")
+	return "", errors.New("iwctl: failed to determine network name")
 }
 
 func getWirelessConnectionNameFromWPACli(iface string) (string, error) {
@@ -121,7 +120,7 @@ func getWirelessConnectionNameFromWPACli(iface string) (string, error) {
 		}
 	}
 
-	return "", errors.New("wpa_cli: не удалось определить имя сети")
+	return "", errors.New("wpa_cli: failed to determine network name")
 }
 
 func getWirelessConnectionNameFromNmcli(iface string) (string, error) {
@@ -138,7 +137,7 @@ func getWirelessConnectionNameFromNmcli(iface string) (string, error) {
 		}
 	}
 
-	return "", errors.New("nmcli: не удалось определить активное соединение")
+	return "", errors.New("nmcli: failed to determine active connection")
 }
 
 type Stats struct {
@@ -167,7 +166,7 @@ func (s *Stats) GetActiveInterfaceName() (string, error) {
 		return s.WirelessInterfaceName, nil
 	}
 
-	return "", errors.New("все сетевые интерфейсы отключены")
+	return "", errors.New("all network interfaces are disconnected")
 }
 
 type OperstateError struct {
@@ -185,16 +184,7 @@ func checkOperstateByPrefix(prefix, dirname, path string) (bool, bool, error) {
 		if err != nil {
 			return true, false, err
 		}
-		defer func(file *os.File) {
-			err := file.Close()
-			if err != nil {
-				_, err2 := fmt.Fprintf(os.Stderr, "%s\n", err)
-				if err2 != nil {
-					return
-				}
-				return
-			}
-		}(file)
+		defer file.Close()
 		isUp, _ := getOperstateStatus(file)
 		if isUp {
 			return true, true, nil
@@ -212,12 +202,10 @@ func getOperstateStatus(out io.Reader) (bool, error) {
 		case "down":
 			return false, nil
 		default:
-			err := &OperstateError{
-				message: "Неверное содержимое файла operstate",
+			return false, &OperstateError{
+				message: "Invalid operstate file content",
 			}
-
-			return false, err
 		}
 	}
-	return false, &OperstateError{message: "Проблема со сканером"}
+	return false, &OperstateError{message: "Scanner issue"}
 }

@@ -15,7 +15,7 @@ import (
 	"main/state_providers/network_stat"
 	"main/state_providers/notifications_state"
 	"main/state_providers/volume_state"
-	"main/state_providers/weather_state" // Импортируем weather_state
+	"main/state_providers/weather_state"
 	"main/util"
 	"time"
 
@@ -76,13 +76,6 @@ func (d *Drawer) drawWeather(stats weather_state.Stats) {
 	if d.c.NoWeatherState {
 		return
 	}
-
-	weatherData, err := weather_state.Get()
-	if err != nil {
-		return
-	}
-
-	log.Printf("Отладка: Получены данные о погоде: %+v\n", weatherData)
 
 	result := fmt.Sprintf(
 		drawer_templates.Weather,
@@ -260,7 +253,6 @@ func (d *Drawer) drawPowerState(s battery_state.Stats) {
 		return
 	}
 
-	// Карта для отображения состояния аккумулятора
 	statusMap := map[string]string{
 		"Full":         drawer_templates.BatPartFull,
 		"Discharging":  drawer_templates.BatPartDischarging,
@@ -271,26 +263,21 @@ func (d *Drawer) drawPowerState(s battery_state.Stats) {
 		"Idle":         "Idle",
 	}
 
-	// Устанавливаем статус на основе состояния аккумулятора или используем BatPartUndefined по умолчанию
 	status, exists := statusMap[s.State]
 	if !exists {
 		status = drawer_templates.BatPartUndefined
 	}
 
-	// Показатель предупреждения при низком уровне заряда
 	warn := ""
 	if s.Percent <= 25 {
 		warn = drawer_templates.BatPartWarningSymbol
 	}
 
-	// Формируем строку с данными батареи с использованием шаблонов
 	statusTemplate := fmt.Sprintf(drawer_templates.BatPartStatus, d.t.Orange, d.t.Black, d.t.Orange, status)
 	warningTemplate := fmt.Sprintf(drawer_templates.BatPartWarning, d.t.Black, d.t.Orange, warn)
 
-	// Формируем итоговую строку для вывода
 	value := fmt.Sprintf(drawer_templates.Bat, statusTemplate, warningTemplate, s.Percent)
 
-	// Добавляем в вывод
 	d.add(value)
 }
 
@@ -324,16 +311,13 @@ func (d *Drawer) drawClock(clockTime time.Time) {
 		clockMonth = drawer_templates.GetClockMonthEn(clockTime.Month())
 		clockWeekDay = drawer_templates.GetClockWeekDayEn(clockTime.Weekday())
 	default:
-		// Лучше использовать логирование или сообщение об ошибке
 		str := "Invalid language(use default 'ru'): " + d.c.Lang
 		d.checker.ErrorFound(errors.New(str))
 
-		// Используем значения по умолчанию
 		clockMonth = drawer_templates.GetClockMonthRu(clockTime.Month())
 		clockWeekDay = drawer_templates.GetClockWeekDayRu(clockTime.Weekday())
 	}
 
-	// Формируем строку с временем
 	date := fmt.Sprintf(
 		drawer_templates.Clock,
 		d.t.Blue,
@@ -352,7 +336,6 @@ func (d *Drawer) drawClock(clockTime time.Time) {
 }
 
 func (d *Drawer) blinkOneSecond() int64 {
-	// Простая альтернатива для мигания
 	return time.Now().UnixNano() / int64(time.Second) % 2 // 0 or 1
 }
 
@@ -364,14 +347,12 @@ func (d *Drawer) drawNotificationsDisabled(state notifications_state.Stats) {
 	if state.IsDisabled {
 		var color string
 
-		// Используем blinkOneSecond для мигания
 		if d.c.EnableNotificationsStateBgBlinking && 0 == d.blinkOneSecond() {
 			color = d.t.Orange
 		} else {
 			color = d.t.Cyan
 		}
 
-		// Формируем строку уведомления с использованием шаблонов
 		date := fmt.Sprintf(
 			drawer_templates.NotificationsDisabled,
 			color,
@@ -383,7 +364,6 @@ func (d *Drawer) drawNotificationsDisabled(state notifications_state.Stats) {
 }
 
 func (d *Drawer) print() {
-	// Собираем итоговое значение и передаем в xsetroot
 	_, err := util.ExecCmd("xsetroot", "-name", d._v)
 	if err != nil {
 		log.Println(
