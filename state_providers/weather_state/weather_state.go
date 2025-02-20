@@ -25,7 +25,7 @@ func Get() (*Stats, error) {
 	cacheMutex.Lock()
 	defer cacheMutex.Unlock()
 
-	if time.Since(lastUpdate) < 10*time.Minute && cache != nil {
+	if time.Since(lastUpdate) < 30*time.Minute && cache != nil {
 		return cache, nil
 	}
 
@@ -70,7 +70,7 @@ type Location struct {
 }
 
 func getPublicIP() (string, error) {
-	resp, err := http.Get("https://ifconfig.me")
+	resp, err := http.Get("https://api64.ipify.org?format=text")
 	if err != nil {
 		return "", fmt.Errorf("error getting public IP: %v", err)
 	}
@@ -82,9 +82,10 @@ func getPublicIP() (string, error) {
 
 	ip, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("error reading response from ifconfig.me: %v", err)
+		return "", fmt.Errorf("error reading response from api64.ipify.org: %v", err)
 	}
 
+	log.Println("Public IP:", string(ip))
 	return string(ip), nil
 }
 
@@ -100,13 +101,16 @@ func getLocationByIP(ip string) (*Location, error) {
 		return nil, fmt.Errorf("failed to get location data. Code: %d", resp.StatusCode)
 	}
 
+	body, err := ioutil.ReadAll(resp.Body)
+	log.Println("Location API response:", string(body))
+
 	var result struct {
 		City string  `json:"city"`
 		Lat  float64 `json:"lat"`
 		Lon  float64 `json:"lon"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("error decoding location data: %v", err)
 	}
 
@@ -134,9 +138,7 @@ func getTemperature(lat, lon float64) (float64, error) {
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return 0, fmt.Errorf("error reading response from Open-Meteo: %v", err)
-	}
+	log.Println("Weather API response:", string(body))
 
 	var data struct {
 		CurrentWeather struct {
