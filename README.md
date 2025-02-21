@@ -22,7 +22,7 @@ sudo make install
 ```
 **Or for local installation:**
 ```sh
-make local_install
+make install_local
 ```
 (The file will be installed in `~/.dwm/bin/dwmbar`)
 
