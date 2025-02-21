@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/ssimunic/gosensors"
 )
@@ -18,12 +19,12 @@ func Get() (*Stats, error) {
 		return nil, fmt.Errorf("error getting sensors data: %v", err)
 	}
 
-	tempRegex := regexp.MustCompile(`([+-]?\d+(\.\d+)?)°C`)
+	tempRegex := regexp.MustCompile(`([+-]?\d+(\.\d+)?)°?C`)
 
 	for chip, values := range sensors.Chips {
-		if chip == "coretemp-isa-0000" {
+		if strings.Contains(chip, "coretemp") || strings.Contains(chip, "amd") || strings.Contains(chip, "acpitz") {
 			for key, value := range values {
-				if key == "Core 0" || key == "Package id 0" {
+				if strings.Contains(key, "Core") || strings.Contains(key, "Package") {
 					matches := tempRegex.FindStringSubmatch(value)
 					if len(matches) > 0 {
 						return &Stats{Temperature: matches[0]}, nil
@@ -33,5 +34,6 @@ func Get() (*Stats, error) {
 		}
 	}
 
+	// Если температура не найдена
 	return nil, errors.New("not found chip or temperature data")
 }

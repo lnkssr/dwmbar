@@ -2,10 +2,8 @@ package weather_state
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -42,19 +40,16 @@ func Get() (*Stats, error) {
 func fetchWeather() (*Stats, error) {
 	ip, err := getPublicIP()
 	if err != nil {
-		log.Println("Error getting IP:", err)
 		return nil, err
 	}
 
 	loc, err := getLocationByIP(ip)
 	if err != nil {
-		log.Println("Error determining location:", err)
 		return nil, err
 	}
 
 	temp, err := getTemperature(loc.Latitude, loc.Longitude)
 	if err != nil {
-		log.Println("Error getting temperature:", err)
 		return nil, err
 	}
 
@@ -64,7 +59,6 @@ func fetchWeather() (*Stats, error) {
 }
 
 type Location struct {
-	City      string
 	Latitude  float64
 	Longitude float64
 }
@@ -76,50 +70,37 @@ func getPublicIP() (string, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to get public IP. Code: %d", resp.StatusCode)
-	}
-
 	ip, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("error reading response from api64.ipify.org: %v", err)
+		return "", fmt.Errorf("error reading response: %v", err)
 	}
 
-	log.Println("Public IP:", string(ip))
 	return string(ip), nil
 }
 
 func getLocationByIP(ip string) (*Location, error) {
-	url := fmt.Sprintf("http://ip-api.com/json/%s?fields=city,lat,lon", ip)
+	url := fmt.Sprintf("http://ip-api.com/json/%s?fields=lat,lon", ip)
 	resp, err := http.Get(url)
 	if err != nil {
-		return nil, fmt.Errorf("error getting location by IP: %v", err)
+		return nil, fmt.Errorf("error getting location: %v", err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get location data. Code: %d", resp.StatusCode)
+	var result struct {
+		Lat float64 `json:"lat"`
+		Lon float64 `json:"lon"`
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
-	log.Println("Location API response:", string(body))
-
-	var result struct {
-		City string  `json:"city"`
-		Lat  float64 `json:"lat"`
-		Lon  float64 `json:"lon"`
-	}
-
 	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("error decoding location data: %v", err)
+		return nil, fmt.Errorf("error decoding location: %v", err)
 	}
 
-	if result.City == "" || result.Lat == 0 || result.Lon == 0 {
-		return nil, errors.New("invalid city and coordinates data")
+	if result.Lat == 0 || result.Lon == 0 {
+		return nil, fmt.Errorf("invalid location data")
 	}
 
 	return &Location{
-		City:      result.City,
 		Latitude:  result.Lat,
 		Longitude: result.Lon,
 	}, nil
@@ -133,19 +114,13 @@ func getTemperature(lat, lon float64) (float64, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("failed to get weather data. Code: %d", resp.StatusCode)
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	log.Println("Weather API response:", string(body))
-
 	var data struct {
 		CurrentWeather struct {
 			Temperature float64 `json:"temperature"`
 		} `json:"current_weather"`
 	}
 
+	body, err := ioutil.ReadAll(resp.Body)
 	if err := json.Unmarshal(body, &data); err != nil {
 		return 0, fmt.Errorf("error decoding weather data: %v", err)
 	}

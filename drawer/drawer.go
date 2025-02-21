@@ -336,7 +336,7 @@ func (d *Drawer) drawClock(clockTime time.Time) {
 }
 
 func (d *Drawer) blinkOneSecond() int64 {
-	return time.Now().UnixNano() / int64(time.Second) % 2 // 0 or 1
+	return time.Now().Unix() % 2 // 0 or 1
 }
 
 func (d *Drawer) drawNotificationsDisabled(state notifications_state.Stats) {

@@ -10,7 +10,7 @@ build:
 	go build -o $(BIN_NAME)
 	strip $(BIN_NAME)
 
-local_install: build
+install_local: build
 	mkdir -p $(BUILD_DIR)
 	cp $(BIN_NAME) $(LOCAL_DIR)/$(BIN_NAME)
 
